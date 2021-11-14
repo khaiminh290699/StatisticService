@@ -1,69 +1,60 @@
-const { ModelStatisticBackLink, ModelPostForum } = require("../db");
+const { ModelStatisticBackLink, ModelForumSetting, ModelForum, ModelAccount, ModelPost } = require("../db");
 
 async function getTotal(data, db) {
-  const { from, to } = data.params;
 
-  const modelStatisticBackLink = new ModelStatisticBackLink(db);
-  const modelPostForum = new ModelPostForum(db);
+  const modelForum = new ModelForum(db);
+  const modelAccount = new ModelAccount(db);
+  const modelPost = new ModelPost(db);
 
-  const totalPostByWeb = await modelPostForum.query()
+  const forums = await modelForum.query()
     .select(
-      modelPostForum.DB.raw(`
-        webs.web_name,
-        webs.id,
-        webs.web_key,
-        webs.web_url,
-        COUNT(*) AS total_post_by_web
+      modelForum.DB.raw(`
+        webs.id, webs.web_name, webs.web_url,
+        COUNT(*)::int AS total
       `)
     )
-    .join("forums", "forums.id", "post_forum.forum_id")
     .join("webs", "webs.id", "forums.web_id")
-    .whereBetween("post_forum.updated_at", [from, to])
-    .groupByRaw(`webs.id, webs.web_name, webs.web_key, webs.web_url`);
+    .whereRaw(`
+      forums.is_deleted = false
+    `)
+    .groupByRaw("webs.id, webs.web_name, webs.web_url")
 
-  
-  const totalClickByForum = await modelStatisticBackLink.query()
+  const accounts = await modelAccount.query()
     .select(
-      modelStatisticBackLink.DB.raw(`
-        forums.id,
-        forums.forum_name,
-        forums.forum_url,
-        COUNT(*) AS total_click_by_forum
+      modelForum.DB.raw(`
+        webs.id, webs.web_name, webs.web_url,
+        COUNT(*)::int AS total
       `)
     )
-    .join("forums", "forums.id", "statistic_backlink.forum_id")
-    .whereBetween("statistic_backlink.updated_at", [from, to])
-    .groupByRaw(`forums.id, forums.forum_name, forums.forum_url`);
-
-  const totalClickByAccount = await modelStatisticBackLink.query()
-    .select(
-      modelStatisticBackLink.DB.raw(`
-        accounts.id,
-        accounts.username,
-        webs.web_name,
-        COUNT(*) AS total_click_by_account
-      `)
-    )
-    .join("settings", "settings.id", "statistic_backlink.setting_id")
-    .join("accounts", "accounts.id", "settings.account_id")
     .join("webs", "webs.id", "accounts.web_id")
-    .whereBetween("statistic_backlink.updated_at", [from, to])
-    .groupByRaw(`accounts.id, accounts.username, webs.web_name`);
+    .whereRaw(`
+      accounts.disable = false
+    `)
+    .groupByRaw("webs.id, webs.web_name, webs.web_url")
 
-  const totalPostByForum = await modelPostForum.query()
+  const posts = await modelPost.query().with("forum_setting", (knex) => {
+    knex.from("forum_setting")
+      .select("forum_id")
+      .unionAll((knex) => {
+        knex.from("timer_setting")
+          .select("forum_id")
+      })
+  })
+  .from("forum_setting")
+  .join("forums", "forums.id", "forum_setting.forum_id")
+  .join("webs", "webs.id", "forums.web_id")
   .select(
-    modelPostForum.DB.raw(`
-      forums.id,
-      forums.forum_name,
-      forums.forum_url,
-      COUNT(*) AS total_post_by_forum
+    modelForum.DB.raw(`
+      webs.id, webs.web_name, webs.web_url,
+      COUNT(*)::int AS total
     `)
   )
-  .join("forums", "forums.id", "post_forum.forum_id")
-  .whereBetween("post_forum.updated_at", [from, to])
-  .groupByRaw(`forums.id, forums.forum_name, forums.forum_url`);
+  .whereRaw(`
+    forums.is_deleted = false
+  `)
+  .groupByRaw("webs.id, webs.web_name, webs.web_url")
 
-  return { status: 200, data: { totalClickByForum, totalClickByAccount, totalPostByWeb, totalPostByForum } }
+  return { status: 200, data: { forums, accounts, posts } }
 }
 
 module.exports = getTotal;

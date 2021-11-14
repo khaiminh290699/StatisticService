@@ -47,19 +47,22 @@ async function getInTime(data, db) {
       `)
     )
     .whereRaw(`
-    (
-      timer_setting.from_date >= :from
-      AND timer_setting.from_date <= :to
-    )
-    OR
-    (
-      timer_setting.to_date >= :from
-      AND timer_setting.to_date <= :to
-    )
-    OR
-    (
-      timer_setting.from_date >= :from
-      AND timer_setting.to_date <= :to
+    timer_setting.is_deleted = false
+    AND (
+      (
+        timer_setting.from_date >= :from
+        AND timer_setting.from_date <= :to
+      )
+      OR
+      (
+        timer_setting.to_date >= :from
+        AND timer_setting.to_date <= :to
+      )
+      OR
+      (
+        timer_setting.from_date >= :from
+        AND timer_setting.to_date <= :to
+      )
     )
     `, { from, to })
     .groupByRaw("timer_at")

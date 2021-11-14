@@ -1,5 +1,8 @@
 const DB = require("./connect/db")
 const Model = require("./model")
+const ModelAccount = require("./model/account-model")
+const ModelForum = require("./model/forum-model")
+const ModelForumSetting = require("./model/forum-setting-model")
 const ModelPostForum = require("./model/post-forum-model")
 const ModelPost = require("./model/post-model")
 const ModelStatisticBackLink = require("./model/statistic-backlink-model")
@@ -11,5 +14,8 @@ module.exports = {
   ModelStatisticBackLink,
   ModelTimerSetting,
   ModelPostForum,
-  ModelPost
+  ModelPost,
+  ModelForumSetting,
+  ModelForum,
+  ModelAccount
 }
